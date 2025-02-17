@@ -1,0 +1,218 @@
+### **Decorators and Metaprogramming in Python**
+
+Python supports metaprogramming, which allows you to write code that manipulates other code. Two key features of metaprogramming in Python are **decorators** and **metaclasses**.
+
+---
+
+## **1. Decorators**
+A **decorator** is a design pattern that allows you to add functionality to existing functions or methods without modifying their structure. Decorators are often used to wrap a function and provide additional behavior before or after the execution of the original function.
+
+### **Function Decorators**
+A function decorator takes a function as an argument, wraps it inside another function that adds functionality, and then returns the wrapper function.
+
+### **Basic Example:**
+
+```python
+def my_decorator(func):
+    def wrapper():
+        print("Something before the function runs")
+        func()  # Call the original function
+        print("Something after the function runs")
+    return wrapper
+
+@my_decorator
+def say_hello():
+    print("Hello!")
+
+say_hello()
+```
+
+**Output:**
+```
+Something before the function runs
+Hello!
+Something after the function runs
+```
+
+Here, the `@my_decorator` is syntactic sugar for `say_hello = my_decorator(say_hello)`.
+
+### **Decorator with Arguments**
+
+To create a decorator that accepts arguments, you add an additional wrapper layer:
+
+```python
+def decorator_with_args(arg):
+    def my_decorator(func):
+        def wrapper(*args, **kwargs):
+            print(f"Decorator argument: {arg}")
+            return func(*args, **kwargs)
+        return wrapper
+    return my_decorator
+
+@decorator_with_args("Python")
+def greet(name):
+    print(f"Hello, {name}!")
+
+greet("World")
+```
+
+**Output:**
+```
+Decorator argument: Python
+Hello, World!
+```
+
+### **Decorators for Methods**
+You can also use decorators with class methods:
+
+```python
+def log_method_call(func):
+    def wrapper(self, *args, **kwargs):
+        print(f"Calling method {func.__name__}")
+        return func(self, *args, **kwargs)
+    return wrapper
+
+class MyClass:
+    @log_method_call
+    def my_method(self):
+        print("Method executed")
+
+obj = MyClass()
+obj.my_method()
+```
+
+**Output:**
+```
+Calling method my_method
+Method executed
+```
+
+---
+
+## **2. Class Decorators**
+
+A **class decorator** is similar to a function decorator but is applied to entire classes to modify or extend their behavior.
+
+### **Basic Class Decorator Example:**
+
+```python
+def add_method(cls):
+    cls.new_method = lambda self: print("New method added!")
+    return cls
+
+@add_method
+class MyClass:
+    def original_method(self):
+        print("Original method")
+
+obj = MyClass()
+obj.original_method()  # Output: Original method
+obj.new_method()       # Output: New method added!
+```
+
+Here, `@add_method` adds a new method to `MyClass`.
+
+### **Using Class Decorators for Validation or Modification:**
+
+You can use class decorators to modify attributes or methods, enforce rules, or add functionality:
+
+```python
+def enforce_string_type(cls):
+    original_init = cls.__init__
+    
+    def new_init(self, name):
+        if not isinstance(name, str):
+            raise ValueError("name must be a string!")
+        original_init(self, name)
+    
+    cls.__init__ = new_init
+    return cls
+
+@enforce_string_type
+class Person:
+    def __init__(self, name):
+        self.name = name
+
+# Usage:
+p = Person("John")  # Works fine
+# p = Person(123)   # Raises ValueError: name must be a string!
+```
+
+---
+
+## **3. Metaclasses**
+
+Metaclasses are a more advanced feature of Python metaprogramming. They define the behavior of classes themselves. Just as a class is an instance of a metaclass, a metaclass controls how classes behave. In Python, the default metaclass is `type`, but you can define your own metaclasses.
+
+### **Basic Metaclass Example:**
+
+```python
+class MyMeta(type):
+    def __new__(cls, name, bases, dct):
+        print(f"Creating class: {name}")
+        return super().__new__(cls, name, bases, dct)
+
+class MyClass(metaclass=MyMeta):
+    pass
+```
+
+**Output:**
+```
+Creating class: MyClass
+```
+
+In this example, `MyMeta` is a metaclass, and when `MyClass` is created, the `__new__` method of the metaclass is invoked.
+
+### **Use Cases for Metaclasses**
+
+1. **Enforcing Constraints on Classes:**
+   You can enforce constraints on class attributes or methods when a class is created.
+
+```python
+class SingletonMeta(type):
+    _instances = {}
+
+    def __call__(cls, *args, **kwargs):
+        if cls not in cls._instances:
+            cls._instances[cls] = super().__call__(*args, **kwargs)
+        return cls._instances[cls]
+
+class SingletonClass(metaclass=SingletonMeta):
+    pass
+
+# Usage:
+s1 = SingletonClass()
+s2 = SingletonClass()
+print(s1 is s2)  # True (both variables point to the same instance)
+```
+
+2. **Automatic Attribute Modification:**
+   You can automatically modify class attributes or methods.
+
+```python
+class UpperAttrMeta(type):
+    def __new__(cls, name, bases, dct):
+        new_attrs = {name.upper(): value for name, value in dct.items() if not name.startswith('__')}
+        return super().__new__(cls, name, bases, new_attrs)
+
+class MyClass(metaclass=UpperAttrMeta):
+    x = 10
+    def method(self):
+        print("Method executed")
+
+obj = MyClass()
+print(hasattr(obj, 'X'))  # True (attribute 'x' becomes 'X')
+```
+
+### **When to Use Metaclasses**
+- **Enforcing patterns**: Such as making classes singletons or registering subclasses automatically.
+- **Automating repetitive tasks**: You can automatically transform class attributes or methods.
+
+---
+
+## **Summary**
+- **Decorators** provide a way to extend or modify the behavior of functions or classes. They are widely used in frameworks like Django and Flask for things like logging, access control, and modifying method behavior.
+- **Class decorators** modify entire classes, either by adding functionality or enforcing rules.
+- **Metaclasses** allow you to control class creation and behavior at a deeper level. They are a powerful tool for building frameworks and enforcing design patterns.
+
+Decorators are more commonly used in day-to-day development, while metaclasses are more suited for framework or library development where you need to control how classes themselves behave.
